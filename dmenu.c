@@ -24,7 +24,7 @@
                              * MAX(0, MIN((y)+(h),(r).y_org+(r).height) - MAX((y),(r).y_org)))
 #define LENGTH(X)             (sizeof X / sizeof X[0])
 #define TEXTW(X)              (drw_fontset_getwidth(drw, (X)) + lrpad)
-#define NUMBERSMAXDIGITS      100
+#define NUMBERSMAXDIGITS      4
 #define NUMBERSBUFSIZE        (NUMBERSMAXDIGITS * 2) + 1
 
 /* enums */
@@ -171,16 +171,14 @@ drawitem(struct item *item, int x, int y, int w)
 static void
 recalculatenumbers()
 {
-	unsigned int numer = 0, denom = 0;
+	unsigned int numer = 0;
 	struct item *item;
 	if (matchend) {
 		numer++;
 		for (item = matchend; item && item->left; item = item->left)
 			numer++;
 	}
-	for (item = items; item && item->text; item++)
-		denom++;
-	snprintf(numbers, NUMBERSBUFSIZE, "%d/%d", numer, denom);
+	snprintf(numbers, NUMBERSBUFSIZE, "%-4d", numer);
 }
 
 static void
@@ -193,6 +191,10 @@ drawmenu(void)
 	drw_setscheme(drw, scheme[SchemeNorm]);
 	drw_rect(drw, 0, 0, mw, mh, 1, 1);
 
+	recalculatenumbers();
+	drw_setscheme(drw, scheme[SchemeCursor]);
+	x = drw_text(drw, x, 0, TEXTW(numbers), bh, lrpad / 4, numbers, 0) - lrpad / 4;
+
 	if (prompt && *prompt) {
 		drw_setscheme(drw, scheme[SchemePrompt]);
 		x = drw_text(drw, x, 0, promptw, bh, lrpad / 4, prompt, 0) - lrpad / 4;
@@ -204,11 +206,19 @@ drawmenu(void)
 
 	curpos = TEXTW(text) - TEXTW(&text[cursor]);
 	if ((curpos += lrpad / 4 - 1) < w) {
+		char cursortext[2] = {text[cursor], 0};
+		/* drw_setscheme(drw, scheme[SchemeCursor]); */
+		/* drw_rect(drw, x + curpos + 1, 2, 8, bh - 4, 1, 0); */
+
 		drw_setscheme(drw, scheme[SchemeCursor]);
-		drw_rect(drw, x + curpos + 1, 2, 8, bh - 4, 1, 0);
+
+		if (!cursortext[0]) {
+			cursortext[0] = ' ';
+		}
+
+		drw_text(drw, x + curpos + 1, y, drw_fontset_getwidth(drw, cursortext), bh, 0, cursortext, 1);
 	}
 
-	recalculatenumbers();
 	if (lines > 0) {
 		/* draw vertical list */
 		for (item = curr; item != next; item = item->right)
@@ -230,7 +240,7 @@ drawmenu(void)
 			drw_text(drw, mw - w - TEXTW(numbers), 0, w, bh, lrpad / 2, ">", 0);
 		}
 	}
-	drw_setscheme(drw, scheme[SchemeNorm]);
+	drw_setscheme(drw, scheme[SchemeCursor]);
 	drw_text(drw, mw - TEXTW(numbers), 0, TEXTW(numbers), bh, lrpad / 2, numbers, 0);
 	drw_map(drw, win, 0, 0, mw, mh);
 }
