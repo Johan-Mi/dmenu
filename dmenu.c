@@ -28,7 +28,11 @@
 #define NUMBERSBUFSIZE        (NUMBERSMAXDIGITS * 2) + 1
 
 /* enums */
-enum { SchemeNorm, SchemeSel, SchemeOut, SchemeNormHighlight, SchemeSelHighlight, SchemeCursor, SchemePrompt, SchemeLast }; /* color schemes */
+enum {
+	SchemeNorm, SchemeSel, SchemeOut,
+	SchemeNormHighlight, SchemeSelHighlight,
+	SchemeCursor, SchemePrompt, SchemeLast
+}; /* color schemes */
 
 struct item {
 	char *text;
@@ -139,7 +143,6 @@ drawhighlights(struct item *item, int x, int y, int maxw)
 			highlight[strlen(token)] = '\0';
 			drw_text(
 				drw,
-				/* x + indentx - (lrpad / 4) - 1, */
 				x + indentx - (lrpad / 4) - lrpad / 2 - 1,
 				y,
 				MIN(maxw - indentx, TEXTW(highlight) - lrpad),
@@ -233,15 +236,13 @@ drawmenu(void)
 		}
 		x += w;
 		for (item = curr; item != next; item = item->right)
-			x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">") - TEXTW(numbers)));
+			x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">")));
 		if (next) {
 			w = TEXTW(">");
 			drw_setscheme(drw, scheme[SchemeNorm]);
-			drw_text(drw, mw - w - TEXTW(numbers), 0, w, bh, lrpad / 2, ">", 0);
+			drw_text(drw, mw - w, 0, w, bh, lrpad / 2, ">", 0);
 		}
 	}
-	drw_setscheme(drw, scheme[SchemeCursor]);
-	drw_text(drw, mw - TEXTW(numbers), 0, TEXTW(numbers), bh, lrpad / 2, numbers, 0);
 	drw_map(drw, win, 0, 0, mw, mh);
 }
 
