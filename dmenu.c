@@ -16,6 +16,11 @@
 #endif
 #include <X11/Xft/Xft.h>
 
+
+#include <stdlib.h>
+#include <limits.h>
+
+
 #include "drw.h"
 #include "util.h"
 
@@ -209,15 +214,19 @@ drawmenu(void)
 
 	curpos = TEXTW(text) - TEXTW(&text[cursor]);
 	if ((curpos += lrpad / 4 - 1) < w) {
-		char cursortext[2] = {text[cursor], 0};
-		/* drw_setscheme(drw, scheme[SchemeCursor]); */
-		/* drw_rect(drw, x + curpos + 1, 2, 8, bh - 4, 1, 0); */
+		char cursortext[MB_LEN_MAX];
+		int charsize;
 
-		drw_setscheme(drw, scheme[SchemeCursor]);
-
-		if (!cursortext[0]) {
+		if (text[cursor]) {
+			charsize = mblen(&text[cursor], MB_LEN_MAX);
+			memcpy(cursortext, &text[cursor], charsize);
+		} else {
+			charsize = 1;
 			cursortext[0] = ' ';
 		}
+		cursortext[charsize] = '\0';
+
+		drw_setscheme(drw, scheme[SchemeCursor]);
 
 		drw_text(drw, x + curpos + 1, y, drw_fontset_getwidth(drw, cursortext), bh, 0, cursortext, 1);
 	}
