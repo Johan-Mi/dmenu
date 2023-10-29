@@ -4,7 +4,7 @@
 static int topbar = 0;                      /* -b  option; if 0, dmenu appears at bottom     */
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = {
-	"fira mono:size=10",
+	"Iosevka Term SS05:size=10",
 	"JoyPixels:size=8"
 };
 static const char *prompt      = NULL;      /* -p  option; prompt to the left of input field */
