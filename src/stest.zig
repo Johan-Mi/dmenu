@@ -14,12 +14,6 @@ fn matches_filters(path: []const u8, name: []const u8) !bool {
     const cwd = std.fs.cwd();
     const st = cwd.statFile(path) catch return false;
 
-    if (flag('x')) { // executable
-        var buffer = std.BoundedArray(u8, std.fs.max_path_bytes){};
-        try buffer.writer().print("{s}\x00", .{path});
-        if (std.c.access(@ptrCast(buffer.slice()), std.posix.X_OK) != 0) return false;
-    }
-
     return ((!flag('b') or st.kind == .block_device) //
     and (!flag('c') or st.kind == .character_device) //
     and (!flag('d') or st.kind == .directory) //
@@ -32,7 +26,8 @@ fn matches_filters(path: []const u8, name: []const u8) !bool {
     and (!flag('r') or if (cwd.access(path, .{ .mode = .read_only })) true else |_| false) //
     and (!flag('s') or st.size != 0) // not empty
     and (!flag('u') or st.mode & std.posix.S.ISUID != 0) // set-user-id flag
-    and (!flag('w') or if (cwd.access(path, .{ .mode = .write_only })) true else |_| false));
+    and (!flag('w') or if (cwd.access(path, .{ .mode = .write_only })) true else |_| false) //
+    and (!flag('x') or st.mode & (std.posix.S.IXUSR | std.posix.S.IXGRP | std.posix.S.IXOTH) != 0)); // executable
 }
 
 fn check(path: []const u8, name: []const u8) !void {
