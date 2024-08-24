@@ -57,52 +57,58 @@ pub fn main() !u8 {
     defer std.debug.assert(gpa.deinit() == .ok);
     const allocator = gpa.allocator();
 
-    var args = std.os.argv;
+    var args = try std.process.argsWithAllocator(allocator);
+    defer args.deinit();
 
-    if (args.len == 0) return error.MissingArgv0;
-    const argv0 = args[0];
+    const me = args.next() orelse return error.MissingArgv0;
 
-    args.ptr += 1;
-    args.len -= 1;
-    while (args.len != 0 and args[0][0] == '-' and args[0][1] != '\x00') : (args = args[1..]) {
-        var argc_: u8 = undefined;
-        var argv_: [*][*:0]u8 = undefined;
-        if (args[0][1] == '-' and args[0][2] == '\x00') {
-            args = args[1..];
-            break;
-        }
-
-        args[0] += 1;
-        argv_ = args.ptr;
-        while (args[0][0] != '\x00') : (args[0] += 1) {
-            if (argv_ != args.ptr) break;
-            argc_ = args[0][0];
-            switch (argc_) {
-                'n', // newer than file
-                'o', // older than file
-                => {
-                    const file_ = if (args[0][1] != '\x00') args[0][1..] else if (2 <= args.len) blk: {
-                        args = args[1..];
-                        break :blk args[0];
-                    } else try usage(std.mem.span(argv0));
-                    const file = std.mem.span(file_);
-                    if (std.fs.cwd().statFile(file)) |stat| {
-                        time_to_compare = stat.mtime;
-                        flags[argc_ - 'a'] = true;
-                    } else |err| try std.io.getStdErr().writer().print("{s}: {}\n", .{ file, err });
-
-                    break;
-                },
-                else => {
-                    _ = std.mem.indexOfScalar(u8, "abcdefghlpqrsuvwx", argc_) orelse
-                        try usage(std.mem.span(argv0));
-                    flags[argc_ - 'a'] = true;
-                },
+    var finished_flags = false;
+    var any_positionals = false;
+    while (args.next()) |arg_| {
+        var arg = arg_;
+        if (finished_flags) {
+            any_positionals = true;
+            if (!flag('l')) {
+                try check(arg, arg);
+            } else if (std.fs.cwd().openDir(arg, .{ .iterate = true })) |dir_| {
+                var dir = dir_;
+                defer dir.close();
+                var iter = dir.iterate();
+                while (iter.next() catch null) |entry| {
+                    var path = std.BoundedArray(u8, std.fs.max_path_bytes){};
+                    if (path.writer().print("{s}/{s}", .{ arg, entry.name }))
+                        try check(path.slice(), entry.name)
+                    else |_| {}
+                }
+            } else |_| {}
+        } else if (std.mem.startsWith(u8, arg, "-") and 2 <= arg.len and !std.mem.eql(u8, arg, "--")) {
+            while (true) {
+                arg = arg[1..];
+                const c = arg[0];
+                switch (c) {
+                    'n', // newer than file
+                    'o', // older than file
+                    => {
+                        const file = if (2 <= arg.len) arg[1..] else args.next() orelse try usage(me);
+                        if (std.fs.cwd().statFile(file)) |stat| {
+                            time_to_compare = stat.mtime;
+                            flags[c - 'a'] = true;
+                        } else |err| try std.io.getStdErr().writer().print("{s}: {}\n", .{ file, err });
+                        finished_flags = true;
+                    },
+                    else => {
+                        _ = std.mem.indexOfScalar(u8, "abcdefghlpqrsuvwx", c) orelse
+                            try usage(me);
+                        flags[c - 'a'] = true;
+                    },
+                }
             }
+        } else {
+            finished_flags = true;
         }
     }
 
-    if (args.len == 0) {
+    if (!any_positionals) {
         var stdin = std.io.getStdIn();
         var reader = std.io.bufferedReader(stdin.reader());
         var line = std.ArrayList(u8).init(allocator);
@@ -116,21 +122,6 @@ pub fn main() !u8 {
                 try check(line.items, line.items),
             else => return err,
         }
-    } else for (args) |arg_| {
-        const arg = std.mem.span(arg_);
-        if (!flag('l')) {
-            try check(arg, arg);
-        } else if (std.fs.cwd().openDir(arg, .{ .iterate = true })) |dir_| {
-            var dir = dir_;
-            defer dir.close();
-            var iter = dir.iterate();
-            while (iter.next() catch null) |entry| {
-                var path = std.BoundedArray(u8, std.fs.max_path_bytes){};
-                if (path.writer().print("{s}/{s}", .{ arg, entry.name }))
-                    try check(path.slice(), entry.name)
-                else |_| {}
-            }
-        } else |_| {}
     }
 
     return @intFromBool(!match);
