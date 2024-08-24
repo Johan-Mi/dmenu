@@ -41,14 +41,11 @@ pub fn build(b: *std.Build) void {
 
     const stest_exe = b.addExecutable(.{
         .name = "stest",
+        .root_source_file = b.path("src/stest.zig"),
         .target = target,
         .optimize = optimize,
     });
-    stest_exe.defineCMacro("VERSION", version);
     stest_exe.linkLibC();
-    stest_exe.addCSourceFiles(.{ .files = &[_][]const u8{
-        "src/stest.c",
-    } });
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
