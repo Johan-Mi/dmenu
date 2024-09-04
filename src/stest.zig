@@ -48,7 +48,7 @@ fn usage(me: []const u8) !noreturn {
 }
 
 pub fn main() !u8 {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
     defer std.debug.assert(gpa.deinit() == .ok);
     const allocator = gpa.allocator();
 
