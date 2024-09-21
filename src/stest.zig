@@ -77,7 +77,7 @@ pub fn main() !u8 {
                 }
             } else |_| {}
         } else if (std.mem.startsWith(u8, arg, "-") and 2 <= arg.len and !std.mem.eql(u8, arg, "--")) {
-            while (true) {
+            while (2 <= arg.len) {
                 arg = arg[1..];
                 const c = arg[0];
                 switch (c) {
