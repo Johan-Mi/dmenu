@@ -61,22 +61,12 @@ pub fn main() !u8 {
     var any_positionals = false;
     while (args.next()) |arg_| {
         var arg = arg_;
-        if (finished_flags) {
-            any_positionals = true;
-            if (!flag('l')) {
-                try check(arg, arg);
-            } else if (std.fs.cwd().openDir(arg, .{ .iterate = true })) |dir_| {
-                var dir = dir_;
-                defer dir.close();
-                var iter = dir.iterate();
-                while (iter.next() catch null) |entry| {
-                    var path = std.BoundedArray(u8, std.fs.max_path_bytes){};
-                    if (path.writer().print("{s}/{s}", .{ arg, entry.name }))
-                        try check(path.slice(), entry.name)
-                    else |_| {}
-                }
-            } else |_| {}
-        } else if (std.mem.startsWith(u8, arg, "-") and 2 <= arg.len and !std.mem.eql(u8, arg, "--")) {
+        if (!finished_flags and std.mem.startsWith(u8, arg, "-") and 2 <= arg.len) {
+            if (std.mem.eql(u8, arg, "--")) {
+                finished_flags = true;
+                continue;
+            }
+
             while (2 <= arg.len) {
                 arg = arg[1..];
                 const c = arg[0];
@@ -100,6 +90,20 @@ pub fn main() !u8 {
             }
         } else {
             finished_flags = true;
+            any_positionals = true;
+            if (!flag('l')) {
+                try check(arg, arg);
+            } else if (std.fs.cwd().openDir(arg, .{ .iterate = true })) |dir_| {
+                var dir = dir_;
+                defer dir.close();
+                var iter = dir.iterate();
+                while (iter.next() catch null) |entry| {
+                    var path = std.BoundedArray(u8, std.fs.max_path_bytes){};
+                    if (path.writer().print("{s}/{s}", .{ arg, entry.name }))
+                        try check(path.slice(), entry.name)
+                    else |_| {}
+                }
+            } else |_| {}
         }
     }
 
